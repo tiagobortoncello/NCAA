@@ -50,7 +50,10 @@ num_games = 12
 simulated_wins = []
 for _ in range(num_simulations):
     wins = 0
-    for _, opp in opponents_df.iterrows()[:num_games]:  # Simula vs. top oponentes
+    # Amostra segura dos oponentes
+    sample_opps = opponents_df.sample(min(num_games, len(opponents_df)), replace=False)
+    
+    for _, opp in sample_opps.iterrows():
         opp_overall = opp['Overall']
         opp_prestige = opp['Prestige'] if not pd.isna(opp['Prestige']) else 3
         prob = win_probability(home_overall, opp_overall, home_prestige, opp_prestige)
@@ -85,9 +88,14 @@ if st.button("Gerar Calendário para 2025"):
     random.shuffle(all_opps)
     
     for i, opp in enumerate(all_opps, 1):
-        prob = win_probability(home_overall, 
-                               team_season_df[team_season_df['Team'] == opp]['Overall'].iloc[0],
-                               home_prestige, 3)  # Simples para inter
+        opp_row = team_season_df[team_season_df['Team'] == opp]
+        if not opp_row.empty:
+            opp_overall = opp_row['Overall'].iloc[0]
+            opp_prestige = opp_row['Prestige'].iloc[0] if not pd.isna(opp_row['Prestige'].iloc[0]) else 3
+        else:
+            opp_overall = 75  # Fallback
+            opp_prestige = 3
+        prob = win_probability(home_overall, opp_overall, home_prestige, opp_prestige)
         score_home = int(20 + random.gauss(20, 10)) if random.random() < prob else int(20 + random.gauss(10, 5))
         score_away = int(20 + random.gauss(20, 10)) if random.random() >= prob else int(20 + random.gauss(10, 5))
         result = "W" if score_home > score_away else "L"
@@ -101,7 +109,14 @@ if st.button("Gerar Calendário para 2025"):
     
     # Bowl final (ex.: vs. top da outra conferência)
     bowl_opp = team_season_df.nlargest(1, 'Overall')['Team'].iloc[0]
-    bowl_prob = win_probability(home_overall, team_season_df[team_season_df['Team'] == bowl_opp]['Overall'].iloc[0], home_prestige, 5)
+    bowl_row = team_season_df[team_season_df['Team'] == bowl_opp]
+    if not bowl_row.empty:
+        bowl_overall = bowl_row['Overall'].iloc[0]
+        bowl_prestige = bowl_row['Prestige'].iloc[0] if not pd.isna(bowl_row['Prestige'].iloc[0]) else 3
+    else:
+        bowl_overall = 75
+        bowl_prestige = 3
+    bowl_prob = win_probability(home_overall, bowl_overall, home_prestige, bowl_prestige)
     bowl_home = int(30 + random.gauss(15, 8)) if random.random() < bowl_prob else int(25 + random.gauss(10, 5))
     bowl_away = int(30 + random.gauss(15, 8)) if random.random() >= bowl_prob else int(25 + random.gauss(10, 5))
     schedule.append({
